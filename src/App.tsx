@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, CheckCircle2, Link as LinkIcon, Smartphone, Monitor, AlertCircle, FileSpreadsheet, Upload, Download, Palette } from 'lucide-react';
+import { Copy, CheckCircle2, Link as LinkIcon, Smartphone, Monitor, AlertCircle, FileSpreadsheet, Upload, Download, Palette, Eye, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function App() {
@@ -24,6 +24,8 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [isProcessingExcel, setIsProcessingExcel] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPayloads, setPreviewPayloads] = useState<{ desktop: string, mobile: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -41,9 +43,11 @@ export default function App() {
             return res.json();
           })
           .then(data => {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const isSmallScreen = window.innerWidth < 768;
             
-            if (isMobile) {
+            if (isMobileUA || isSmallScreen) {
               window.location.href = `https://mobile-propuesta-con-from-completo-iax6kdhuq.vercel.app/#/p/${data.mobilePayload}`;
             } else {
               window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
@@ -89,6 +93,20 @@ export default function App() {
     return { desktopPayload, mobilePayload };
   };
 
+  const handlePreview = () => {
+    const { desktopPayload, mobilePayload } = createLinkPayloads(
+      formData.clientName,
+      formData.phrase,
+      formData.img1,
+      formData.img2,
+      formData.color1,
+      formData.color2,
+      formData.color3
+    );
+    setPreviewPayloads({ desktop: desktopPayload, mobile: mobilePayload });
+    setShowPreview(true);
+  };
+
   const generateLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
@@ -117,7 +135,8 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al generar el enlace');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error del servidor (${response.status})`);
       }
 
       const data = await response.json();
@@ -126,7 +145,7 @@ export default function App() {
       setCopied(false);
     } catch (err) {
       console.error(err);
-      alert('Hubo un error al generar el enlace. Por favor, intenta de nuevo.');
+      alert(`Hubo un error al generar el enlace: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -434,14 +453,25 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="w-full bg-[#0a192f] text-emerald-400 font-black uppercase tracking-widest py-4 rounded-xl hover:bg-emerald-500 hover:text-[#0a192f] transition-colors mt-8 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <LinkIcon size={20} />
-                  {isGenerating ? 'Generando...' : 'Generar Enlace Corto'}
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+                  <button
+                    type="submit"
+                    disabled={isGenerating}
+                    className="bg-[#0a192f] text-emerald-400 font-black uppercase tracking-widest py-4 rounded-xl hover:bg-emerald-500 hover:text-[#0a192f] transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <LinkIcon size={20} />
+                    {isGenerating ? 'Generando...' : 'Generar Enlace Corto'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={handlePreview}
+                    className="bg-white border-2 border-[#0a192f] text-[#0a192f] font-black uppercase tracking-widest py-4 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Eye size={20} />
+                    Previsualización
+                  </button>
+                </div>
               </form>
             ) : (
               <div className="text-center space-y-8">
@@ -551,6 +581,74 @@ export default function App() {
             )}
           </div>
         </div>
+
+        {showPreview && previewPayloads && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a192f]/90 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-[#0a192f]">
+                    Previsualización <span className="text-emerald-500">En Tiempo Real</span>
+                  </h2>
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
+                    Cliente: {formData.clientName || 'Sin nombre'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowPreview(false)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-auto p-6 bg-gray-100">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full min-h-[600px]">
+                  {/* Desktop Preview */}
+                  <div className="lg:col-span-2 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
+                      <Monitor size={14} />
+                      Versión Desktop
+                    </div>
+                    <div className="flex-1 bg-white rounded-2xl shadow-inner border border-gray-200 overflow-hidden relative">
+                      <iframe 
+                        src={`https://propuesta-comercial-desktop.vercel.app/?data=${previewPayloads.desktop}`}
+                        className="w-full h-full border-0"
+                        title="Desktop Preview"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Mobile Preview */}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
+                      <Smartphone size={14} />
+                      Versión Mobile
+                    </div>
+                    <div className="flex-1 flex justify-center">
+                      <div className="w-[320px] h-full bg-[#0a192f] rounded-[3rem] p-3 shadow-2xl border-4 border-gray-800 relative overflow-hidden">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-gray-800 rounded-b-2xl z-10"></div>
+                        <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden">
+                          <iframe 
+                            src={`https://mobile-propuesta-con-from-completo-iax6kdhuq.vercel.app/#/p/${previewPayloads.mobile}`}
+                            className="w-full h-full border-0"
+                            title="Mobile Preview"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 bg-white border-t border-gray-100 text-center">
+                <p className="text-sm text-gray-500 italic">
+                  * Esta es una previsualización de cómo el cliente verá la propuesta según su dispositivo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

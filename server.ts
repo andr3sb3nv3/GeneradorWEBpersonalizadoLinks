@@ -1,6 +1,11 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import Database from 'better-sqlite3';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const db = new Database('links.db');
 
@@ -20,6 +25,10 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
+  });
+
   app.post('/api/links', (req, res) => {
     try {
       const { clientName, desktopPayload, mobilePayload } = req.body;
@@ -76,9 +85,10 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Production static file serving
-    app.use(express.static('dist'));
+    const distPath = path.join(__dirname, 'dist');
+    app.use(express.static(distPath));
     app.use('*', (req, res) => {
-      res.sendFile('/dist/index.html', { root: '.' });
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
