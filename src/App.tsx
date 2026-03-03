@@ -44,10 +44,18 @@ export default function App() {
           })
           .then(data => {
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-            const isSmallScreen = window.innerWidth < 768;
             
-            if (isMobileUA || isSmallScreen) {
+            // Detección más amplia de dispositivos móviles
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(userAgent);
+            
+            // Detección por capacidades táctiles (común en móviles/tablets)
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            // Detección por tamaño de pantalla (ancho o alto pequeño indica móvil)
+            const isSmallScreen = window.innerWidth < 1024 || window.innerHeight < 768;
+            
+            // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
+            if (isMobileUA || (hasTouch && isSmallScreen)) {
               window.location.href = `https://mobile-propuesta-con-from-completo-iax6kdhuq.vercel.app/#/p/${data.mobilePayload}`;
             } else {
               window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;

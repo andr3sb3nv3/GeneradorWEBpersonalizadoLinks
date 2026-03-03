@@ -7,14 +7,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database('links.db');
+const dbPath = path.join(__dirname, 'links.db');
+console.log(`Initializing database at: ${dbPath}`);
+const db = new Database(dbPath);
 
 // Initialize database
 db.exec(`
   CREATE TABLE IF NOT EXISTS links (
     slug TEXT PRIMARY KEY,
     desktopPayload TEXT,
-    mobilePayload TEXT
+    mobilePayload TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
@@ -24,9 +27,21 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Logging middleware
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    }
+    next();
+  });
+
   // API Routes
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
+    res.json({ 
+      status: 'ok', 
+      environment: process.env.NODE_ENV || 'development',
+      dbPath: dbPath
+    });
   });
 
   app.post('/api/links', (req, res) => {
@@ -34,19 +49,18 @@ async function startServer() {
       const { clientName, desktopPayload, mobilePayload } = req.body;
       
       if (!clientName || !desktopPayload || !mobilePayload) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({ error: 'Faltan campos obligatorios' });
       }
 
-      // Generate a very short random string (e.g., 5 characters)
       const generateShortSlug = () => Math.random().toString(36).substring(2, 7);
-      
       let finalSlug = generateShortSlug();
       
-      // Handle collisions
-      while (true) {
+      let attempts = 0;
+      while (attempts < 10) {
         const existing = db.prepare('SELECT slug FROM links WHERE slug = ?').get(finalSlug);
         if (!existing) break;
         finalSlug = generateShortSlug();
+        attempts++;
       }
 
       db.prepare('INSERT INTO links (slug, desktopPayload, mobilePayload) VALUES (?, ?, ?)').run(
@@ -55,10 +69,11 @@ async function startServer() {
         mobilePayload
       );
       
+      console.log(`Link created: ${finalSlug} for ${clientName}`);
       res.json({ slug: finalSlug });
     } catch (error) {
       console.error('Error creating link:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Error interno al guardar en la base de datos' });
     }
   });
 
@@ -68,11 +83,11 @@ async function startServer() {
       if (row) {
         res.json(row);
       } else {
-        res.status(404).json({ error: 'Link not found' });
+        res.status(404).json({ error: 'Enlace no encontrado o expirado' });
       }
     } catch (error) {
       console.error('Error fetching link:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Error al recuperar el enlace' });
     }
   });
 
@@ -84,16 +99,25 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // Production static file serving
     const distPath = path.join(__dirname, 'dist');
+    console.log(`Serving static files from: ${distPath}`);
     app.use(express.static(distPath));
-    app.use('*', (req, res) => {
+    
+    // API routes should NOT be handled by the SPA fallback
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) return next();
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({ error: 'Error crítico en el servidor' });
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT} [${process.env.NODE_ENV || 'development'}]`);
   });
 }
 
