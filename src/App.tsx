@@ -54,24 +54,29 @@ export default function App() {
             return res.json();
           })
           .then(data => {
-            console.log('API data received:', data);
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+            console.log('UserAgent:', userAgent);
             
-            // Detección estricta de móvil basada SOLO en User-Agent.
-            // Eliminamos la detección por tamaño de pantalla (innerWidth) porque si el usuario
-            // en Desktop tiene la ventana minimizada o herramientas de desarrollador abiertas,
-            // lo enviaba erróneamente a la versión móvil.
-            const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            // Detección mejorada:
+            // 1. Buscamos palabras clave de móvil.
+            // 2. Buscamos palabras clave de escritorio para forzar Desktop.
+            const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const isDesktopUA = /Windows NT|Macintosh|Linux x86_64/i.test(userAgent);
+            
+            // Si es explícitamente escritorio, forzamos desktop.
+            // Si no, si es móvil, vamos a móvil.
+            // Por defecto, si es ambiguo, vamos a desktop (más seguro).
+            const isMobile = isMobileUA && !isDesktopUA;
             
             // Limpiamos los payloads
             const mPayload = (data.mobilePayload || '').trim();
             const dPayload = (data.desktopPayload || '').trim();
 
             if (isMobile) {
-              // MOBILE: Usa fragmento (#). NO usamos encodeURIComponent porque si la web destino lee el hash directo, '%3D' rompe el atob()
+              console.log('Redirecting to MOBILE');
               window.location.replace(`https://mobile-propuesta-con-from-completo.vercel.app/#/p/${mPayload}`);
             } else {
-              // DESKTOP: Usa query param (?). SÍ usamos encodeURIComponent para evitar que el '+' se convierta en espacio
+              console.log('Redirecting to DESKTOP');
               window.location.replace(`https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(dPayload)}`);
             }
           })
