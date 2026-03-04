@@ -56,13 +56,11 @@ export default function App() {
             console.log('API data received:', data);
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
             
-            // Detección estricta de móvil basada en User-Agent (más confiable que el touch)
-            const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-            
-            // Fallback: solo si la pantalla es tamaño teléfono
-            const isSmallScreen = window.innerWidth <= 768;
-            
-            const isMobile = isMobileUA || isSmallScreen;
+            // Detección estricta de móvil basada SOLO en User-Agent.
+            // Eliminamos la detección por tamaño de pantalla (innerWidth) porque si el usuario
+            // en Desktop tiene la ventana minimizada o herramientas de desarrollador abiertas,
+            // lo enviaba erróneamente a la versión móvil.
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
             
             // Limpiamos los payloads
             const mPayload = (data.mobilePayload || '').trim();
