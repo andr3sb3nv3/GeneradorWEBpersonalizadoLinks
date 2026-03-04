@@ -60,11 +60,14 @@ export default function App() {
             // Detección por tamaño de pantalla (ancho o alto pequeño indica móvil)
             const isSmallScreen = window.innerWidth < 1024 || window.innerHeight < 768;
             
-            // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
+            // Limpiamos y codificamos para la URL
+            const mPayload = (data.mobilePayload || '').trim();
+            const dPayload = (data.desktopPayload || '').trim();
+
             if (isMobileUA || (hasTouch && isSmallScreen)) {
-              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`;
+              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(mPayload)}`;
             } else {
-              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
+              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(dPayload)}`;
             }
           })
           .catch(err => {
@@ -76,15 +79,38 @@ export default function App() {
     }
   }, []);
 
+  const fillSampleData = () => {
+    setFormData({
+      clientName: 'Empresa de Ejemplo S.A.',
+      phrase: '¡Hola! En Atenea Growth hemos analizado tu caso y preparamos una propuesta comercial exclusiva para escalar tus resultados. Descúbrela aquí.',
+      img1: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+      img2: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+      color1: '#0a192f',
+      color2: '#10b981',
+      color3: '#f8fafc'
+    });
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const createLinkPayloads = (clientName: string, phrase: string, img1: string, img2: string, color1: string, color2: string, color3: string) => {
-    // Función para codificar Base64 manejando caracteres Unicode (acentos, etc)
+    // Función de codificación robusta para Base64 con soporte Unicode
     const encodeData = (obj: any) => {
-      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+      try {
+        const str = JSON.stringify(obj);
+        const uint8Array = new TextEncoder().encode(str);
+        let binString = "";
+        uint8Array.forEach((byte) => {
+          binString += String.fromCharCode(byte);
+        });
+        return btoa(binString);
+      } catch (e) {
+        console.error("Error codificando datos:", e);
+        return "";
+      }
     };
 
     const desktopPayload = encodeData({
@@ -96,7 +122,7 @@ export default function App() {
       color2: color2 || '',
       color3: color3 || ''
     });
-    
+
     const mobilePayload = encodeData({
       companyName: clientName,
       text: phrase,
@@ -338,6 +364,16 @@ export default function App() {
           <div className="p-8 md:p-12">
             {activeTab === 'single' ? (
               <form onSubmit={generateLink} className="space-y-6">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={fillSampleData}
+                    className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition-colors"
+                  >
+                    <Palette size={14} />
+                    Llenar con datos de prueba
+                  </button>
+                </div>
                 <div>
                   <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                     Nombre del Cliente *
