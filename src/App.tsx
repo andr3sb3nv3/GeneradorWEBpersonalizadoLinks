@@ -56,7 +56,7 @@ export default function App() {
             
             // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
             if (isMobileUA || (hasTouch && isSmallScreen)) {
-              window.location.href = `https://mobile-propuesta-con-from-completo-iax6kdhuq.vercel.app/#/p/${data.mobilePayload}`;
+              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`;
             } else {
               window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
             }
