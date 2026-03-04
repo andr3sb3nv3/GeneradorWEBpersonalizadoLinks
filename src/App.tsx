@@ -41,7 +41,12 @@ export default function App() {
       if (slug) {
         setIsRedirecting(true);
         
-        fetch(`/api/links/${slug}`)
+        fetch(`/api/links/${slug}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        })
           .then(res => {
             console.log('API response status:', res.status);
             if (!res.ok) throw new Error('Enlace no encontrado');
@@ -51,23 +56,24 @@ export default function App() {
             console.log('API data received:', data);
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
             
-            // Detección más amplia de dispositivos móviles
-            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(userAgent);
+            // Detección estricta de móvil basada en User-Agent (más confiable que el touch)
+            const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
             
-            // Detección por capacidades táctiles (común en móviles/tablets)
-            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            // Fallback: solo si la pantalla es tamaño teléfono
+            const isSmallScreen = window.innerWidth <= 768;
             
-            // Detección por tamaño de pantalla (ancho o alto pequeño indica móvil)
-            const isSmallScreen = window.innerWidth < 1024 || window.innerHeight < 768;
+            const isMobile = isMobileUA || isSmallScreen;
             
-            // Limpiamos y codificamos para la URL
+            // Limpiamos los payloads
             const mPayload = (data.mobilePayload || '').trim();
             const dPayload = (data.desktopPayload || '').trim();
 
-            if (isMobileUA || (hasTouch && isSmallScreen)) {
-              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(mPayload)}`;
+            if (isMobile) {
+              // MOBILE: Usa fragmento (#). NO usamos encodeURIComponent porque si la web destino lee el hash directo, '%3D' rompe el atob()
+              window.location.replace(`https://mobile-propuesta-con-from-completo.vercel.app/#/p/${mPayload}`);
             } else {
-              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(dPayload)}`;
+              // DESKTOP: Usa query param (?). SÍ usamos encodeURIComponent para evitar que el '+' se convierta en espacio
+              window.location.replace(`https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(dPayload)}`);
             }
           })
           .catch(err => {
@@ -97,16 +103,10 @@ export default function App() {
   };
 
   const createLinkPayloads = (clientName: string, phrase: string, img1: string, img2: string, color1: string, color2: string, color3: string) => {
-    // Función de codificación robusta para Base64 con soporte Unicode
+    // Función de codificación robusta para Base64 con soporte Unicode (estándar universal)
     const encodeData = (obj: any) => {
       try {
-        const str = JSON.stringify(obj);
-        const uint8Array = new TextEncoder().encode(str);
-        let binString = "";
-        uint8Array.forEach((byte) => {
-          binString += String.fromCharCode(byte);
-        });
-        return btoa(binString);
+        return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
       } catch (e) {
         console.error("Error codificando datos:", e);
         return "";
