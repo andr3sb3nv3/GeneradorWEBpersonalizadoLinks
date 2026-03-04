@@ -64,11 +64,11 @@ export default function App() {
 
             // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
             if (isMobileUA || (hasTouch && isSmallScreen)) {
-              console.log('Redirecting to mobile:', `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`);
-              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`;
+              console.log('Redirecting to mobile:', `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(data.mobilePayload)}`);
+              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(data.mobilePayload)}`;
             } else {
-              console.log('Redirecting to desktop:', `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`);
-              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
+              console.log('Redirecting to desktop:', `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(data.desktopPayload)}`);
+              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(data.desktopPayload)}`;
             }
           })
           .catch(err => {
