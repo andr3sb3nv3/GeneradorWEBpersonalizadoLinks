@@ -11,6 +11,13 @@ const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
 });
 
+console.log('POSTGRES_URL is defined:', !!process.env.POSTGRES_URL);
+if (process.env.POSTGRES_URL) {
+  console.log('POSTGRES_URL starts with:', process.env.POSTGRES_URL.substring(0, 15));
+} else {
+  console.error('POSTGRES_URL is NOT defined in environment variables!');
+}
+
 // Initialize database table (async)
 async function initDb() {
   try {
