@@ -24,6 +24,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [isProcessingExcel, setIsProcessingExcel] = useState(false);
+  const [processedData, setProcessedData] = useState<any[][] | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewPayloads, setPreviewPayloads] = useState<{ desktop: string, mobile: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,8 +32,11 @@ export default function App() {
   useEffect(() => {
     const path = window.location.pathname;
     
-    // Si la ruta no es la raíz y no es una ruta de API, la tratamos como un slug
-    if (path.length > 1 && !path.startsWith('/api/')) {
+    // Si estamos en la raíz, no hacemos nada
+    if (path === '/' || path === '') return;
+    
+    // Si no es una ruta de API, la tratamos como un slug
+    if (!path.startsWith('/api/')) {
       const slug = path.substring(1); // Removemos el '/' inicial
       if (slug) {
         setIsRedirecting(true);
@@ -237,13 +241,10 @@ export default function App() {
           }
         }
 
-        // Create and download new Excel file
-        const newWs = XLSX.utils.aoa_to_sheet(newData);
-        const newWb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(newWb, newWs, "Propuestas Generadas");
-        XLSX.writeFile(newWb, "Propuestas_Atenea.xlsx");
+        // Create and set processed data for table preview
+        setProcessedData(newData);
         
-        alert('¡Archivo procesado con éxito! La descarga comenzará automáticamente.');
+        alert('¡Archivo procesado con éxito! Puedes ver la tabla abajo.');
       } catch (err) {
         console.error(err);
         alert('Hubo un error al procesar el archivo Excel.');
@@ -521,25 +522,72 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-6 text-left">
-                  <h4 className="font-bold text-[#0a192f] mb-2 flex items-center gap-2">
-                    <Download size={18} className="text-emerald-500" />
-                    ¿Qué obtendrás?
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Se descargará automáticamente un nuevo archivo Excel que incluirá todas tus columnas originales más dos columnas adicionales:
-                  </p>
-                  <ul className="mt-3 space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5"></div>
-                      <strong>URL Generada:</strong> El enlace corto y único para cada cliente.
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5"></div>
-                      <strong>Mensaje para el Cliente:</strong> Un texto persuasivo listo para copiar y enviar por WhatsApp o Email, incluyendo la propuesta de Atenea Growth y el enlace.
-                    </li>
-                  </ul>
-                </div>
+                {processedData ? (
+                  <div className="mt-8 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                      <h4 className="font-bold text-[#0a192f]">Resultados Procesados</h4>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setProcessedData(null)}
+                          className="bg-gray-200 text-gray-700 text-xs font-bold uppercase tracking-widest py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                          Limpiar
+                        </button>
+                        <button
+                          onClick={() => {
+                            const tableText = processedData.map(row => row.join('\t')).join('\n');
+                            navigator.clipboard.writeText(tableText);
+                            alert('Datos copiados al portapapeles');
+                          }}
+                          className="bg-[#0a192f] text-emerald-400 text-xs font-bold uppercase tracking-widest py-2 px-4 rounded-lg hover:bg-emerald-500 hover:text-[#0a192f] transition-colors flex items-center gap-2"
+                        >
+                          <Copy size={14} />
+                          Copiar Tabla
+                        </button>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto max-h-[400px]">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-100 text-gray-600 uppercase font-bold text-[10px] tracking-widest sticky top-0">
+                          <tr>
+                            {processedData[0].map((header, i) => (
+                              <th key={i} className="px-4 py-3">{header}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {processedData.slice(1).map((row, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              {row.map((cell, j) => (
+                                <td key={j} className="px-4 py-3 whitespace-nowrap text-gray-600">{cell}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-6 text-left">
+                    <h4 className="font-bold text-[#0a192f] mb-2 flex items-center gap-2">
+                      <Download size={18} className="text-emerald-500" />
+                      ¿Qué obtendrás?
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Se procesará tu archivo y verás una previsualización de los datos aquí mismo, incluyendo:
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5"></div>
+                        <strong>URL Generada:</strong> El enlace corto y único para cada cliente.
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5"></div>
+                        <strong>Mensaje para el Cliente:</strong> Un texto persuasivo listo para copiar y enviar.
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
