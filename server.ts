@@ -79,7 +79,11 @@ async function startServer() {
       res.json({ slug: finalSlug });
     } catch (error) {
       console.error('Error creating link:', error);
-      res.status(500).json({ error: `Error interno al guardar en la base de datos: ${error instanceof Error ? error.message : 'Error desconocido'}` });
+      // Log the full error object to Render logs
+      console.error('Full error details:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: `Error interno al guardar en la base de datos: ${errorMessage}` });
     }
   });
 
