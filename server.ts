@@ -1,23 +1,27 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { sql } from '@vercel/postgres';
+import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+});
+
 // Initialize database table (async)
 async function initDb() {
   try {
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS links (
         slug TEXT PRIMARY KEY,
         desktopPayload TEXT,
         mobilePayload TEXT,
         createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
-    `;
+    `);
     console.log('Database initialized');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -60,32 +64,28 @@ async function startServer() {
       
       let attempts = 0;
       while (attempts < 10) {
-        const { rows } = await sql`SELECT slug FROM links WHERE slug = ${finalSlug}`;
+        const { rows } = await pool.query('SELECT slug FROM links WHERE slug = $1', [finalSlug]);
         if (rows.length === 0) break;
         finalSlug = generateShortSlug();
         attempts++;
       }
 
-      await sql`
-        INSERT INTO links (slug, desktopPayload, mobilePayload) 
-        VALUES (${finalSlug}, ${desktopPayload}, ${mobilePayload})
-      `;
+      await pool.query(
+        'INSERT INTO links (slug, desktopPayload, mobilePayload) VALUES ($1, $2, $3)',
+        [finalSlug, desktopPayload, mobilePayload]
+      );
       
       console.log(`Link created: ${finalSlug} for ${clientName}`);
       res.json({ slug: finalSlug });
     } catch (error) {
       console.error('Error creating link:', error);
-      // Log the specific error message to help diagnose
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-      }
       res.status(500).json({ error: `Error interno al guardar en la base de datos: ${error instanceof Error ? error.message : 'Error desconocido'}` });
     }
   });
 
   app.get('/api/links/:slug', async (req, res) => {
     try {
-      const { rows } = await sql`SELECT desktopPayload, mobilePayload FROM links WHERE slug = ${req.params.slug}`;
+      const { rows } = await pool.query('SELECT desktopPayload, mobilePayload FROM links WHERE slug = $1', [req.params.slug]);
       if (rows.length > 0) {
         res.json(rows[0]);
       } else {
