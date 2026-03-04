@@ -9,6 +9,9 @@ const __dirname = path.dirname(__filename);
 
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 console.log('POSTGRES_URL is defined:', !!process.env.POSTGRES_URL);
