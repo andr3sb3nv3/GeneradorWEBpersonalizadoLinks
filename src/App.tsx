@@ -43,10 +43,12 @@ export default function App() {
         
         fetch(`/api/links/${slug}`)
           .then(res => {
+            console.log('API response status:', res.status);
             if (!res.ok) throw new Error('Enlace no encontrado');
             return res.json();
           })
           .then(data => {
+            console.log('API data received:', data);
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
             
             // Detección más amplia de dispositivos móviles
@@ -58,14 +60,19 @@ export default function App() {
             // Detección por tamaño de pantalla (ancho o alto pequeño indica móvil)
             const isSmallScreen = window.innerWidth < 1024 || window.innerHeight < 768;
             
+            console.log('Device detection:', { isMobileUA, hasTouch, isSmallScreen });
+
             // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
             if (isMobileUA || (hasTouch && isSmallScreen)) {
+              console.log('Redirecting to mobile:', `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`);
               window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`;
             } else {
+              console.log('Redirecting to desktop:', `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`);
               window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
             }
           })
           .catch(err => {
+            console.error('Redirect error:', err);
             setError(err.message);
             setIsRedirecting(false);
           });
