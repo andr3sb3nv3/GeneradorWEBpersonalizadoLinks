@@ -1,25 +1,29 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import Database from 'better-sqlite3';
+import { sql } from '@vercel/postgres';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'links.db');
-console.log(`Initializing database at: ${dbPath}`);
-const db = new Database(dbPath);
-
-// Initialize database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS links (
-    slug TEXT PRIMARY KEY,
-    desktopPayload TEXT,
-    mobilePayload TEXT,
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+// Initialize database table (async)
+async function initDb() {
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS links (
+        slug TEXT PRIMARY KEY,
+        desktopPayload TEXT,
+        mobilePayload TEXT,
+        createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    console.log('Database initialized');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+  }
+}
+initDb();
 
 async function startServer() {
   const app = express();
@@ -39,12 +43,11 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'ok', 
-      environment: process.env.NODE_ENV || 'development',
-      dbPath: dbPath
+      environment: process.env.NODE_ENV || 'development'
     });
   });
 
-  app.post('/api/links', (req, res) => {
+  app.post('/api/links', async (req, res) => {
     try {
       const { clientName, desktopPayload, mobilePayload } = req.body;
       
@@ -57,17 +60,16 @@ async function startServer() {
       
       let attempts = 0;
       while (attempts < 10) {
-        const existing = db.prepare('SELECT slug FROM links WHERE slug = ?').get(finalSlug);
-        if (!existing) break;
+        const { rows } = await sql`SELECT slug FROM links WHERE slug = ${finalSlug}`;
+        if (rows.length === 0) break;
         finalSlug = generateShortSlug();
         attempts++;
       }
 
-      db.prepare('INSERT INTO links (slug, desktopPayload, mobilePayload) VALUES (?, ?, ?)').run(
-        finalSlug,
-        desktopPayload,
-        mobilePayload
-      );
+      await sql`
+        INSERT INTO links (slug, desktopPayload, mobilePayload) 
+        VALUES (${finalSlug}, ${desktopPayload}, ${mobilePayload})
+      `;
       
       console.log(`Link created: ${finalSlug} for ${clientName}`);
       res.json({ slug: finalSlug });
@@ -77,11 +79,11 @@ async function startServer() {
     }
   });
 
-  app.get('/api/links/:slug', (req, res) => {
+  app.get('/api/links/:slug', async (req, res) => {
     try {
-      const row = db.prepare('SELECT desktopPayload, mobilePayload FROM links WHERE slug = ?').get(req.params.slug);
-      if (row) {
-        res.json(row);
+      const { rows } = await sql`SELECT desktopPayload, mobilePayload FROM links WHERE slug = ${req.params.slug}`;
+      if (rows.length > 0) {
+        res.json(rows[0]);
       } else {
         res.status(404).json({ error: 'Enlace no encontrado o expirado' });
       }
@@ -103,14 +105,12 @@ async function startServer() {
     console.log(`Serving static files from: ${distPath}`);
     app.use(express.static(distPath));
     
-    // API routes should NOT be handled by the SPA fallback
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  // Global Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error('Unhandled Error:', err);
     res.status(500).json({ error: 'Error crítico en el servidor' });
