@@ -41,7 +41,8 @@ export default function App() {
       if (slug) {
         setIsRedirecting(true);
         
-        fetch(`/api/links/${slug}`, {
+        // Añadimos un timestamp a la URL para romper cualquier caché agresiva de Chrome
+        fetch(`/api/links/${slug}?t=${new Date().getTime()}`, {
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
