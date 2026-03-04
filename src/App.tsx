@@ -152,7 +152,7 @@ export default function App() {
       }
 
       const data = await response.json();
-      const link = `https://generador-we-bpersonalizado-links.vercel.app/${data.slug}`;
+      const link = `https://generadorwebpersonalizadolinks.onrender.com/${data.slug}`;
       setGeneratedLink(link);
       setCopied(false);
     } catch (err) {
@@ -220,10 +220,10 @@ export default function App() {
             if (!response.ok) throw new Error('Failed');
             
             const resData = await response.json();
-            const shortUrl = `https://generador-we-bpersonalizado-links.vercel.app/${resData.slug}`;
+            const shortUrl = `https://generadorwebpersonalizadolinks.onrender.com/${resData.slug}`;
             
             // Generate the explicit proposal message
-            const message = `¡Hola ${clientName}! En Atenea Growth hemos analizado tu caso y preparamos una propuesta comercial exclusiva para escalar tus resultados. Descúbrela aquí: https://generador-we-bpersonalizado-links.vercel.app/${resData.slug}`;
+            const message = `¡Hola ${clientName}! En Atenea Growth hemos analizado tu caso y preparamos una propuesta comercial exclusiva para escalar tus resultados. Descúbrela aquí: https://generadorwebpersonalizadolinks.onrender.com/${resData.slug}`;
 
             const newRow = [...row];
             newRow[4] = shortUrl;
