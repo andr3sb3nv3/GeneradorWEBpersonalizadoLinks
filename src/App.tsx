@@ -85,6 +85,16 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Función auxiliar para codificar en Base64 de forma segura con caracteres Unicode
+  const safeBtoa = (str: string) => {
+    try {
+      return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
+    } catch (e) {
+      console.error("Error en safeBtoa:", e);
+      return "";
+    }
+  };
+
   const createLinkPayloads = (clientName: string, phrase: string, img1: string, img2: string, color1: string, color2: string, color3: string) => {
     const data = {
       clientName,
@@ -96,8 +106,8 @@ export default function App() {
       color3: color3 || ''
     };
 
-    // Codificación consistente en Base64
-    const desktopPayload = btoa(JSON.stringify(data));
+    // Codificación consistente en Base64 usando safeBtoa
+    const desktopPayload = safeBtoa(JSON.stringify(data));
     
     const mobileData = {
       companyName: clientName,
@@ -108,7 +118,7 @@ export default function App() {
       color2: color2 || '',
       color3: color3 || ''
     };
-    const mobilePayload = btoa(JSON.stringify(mobileData));
+    const mobilePayload = safeBtoa(JSON.stringify(mobileData));
 
     return { desktopPayload, mobilePayload };
   };
