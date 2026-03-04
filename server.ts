@@ -99,9 +99,12 @@ async function startServer() {
 
   app.get('/api/links/:slug', async (req, res) => {
     try {
-      const { rows } = await pool.query('SELECT desktopPayload, mobilePayload FROM links WHERE slug = $1', [req.params.slug]);
+      const { rows } = await pool.query('SELECT desktoppayload, mobilepayload FROM links WHERE slug = $1', [req.params.slug]);
       if (rows.length > 0) {
-        res.json(rows[0]);
+        res.json({
+          desktopPayload: rows[0].desktoppayload,
+          mobilePayload: rows[0].mobilepayload
+        });
       } else {
         res.status(404).json({ error: 'Enlace no encontrado o expirado' });
       }
