@@ -86,28 +86,29 @@ export default function App() {
   };
 
   const createLinkPayloads = (clientName: string, phrase: string, img1: string, img2: string, color1: string, color2: string, color3: string) => {
-    const desktopPayload = btoa(JSON.stringify({
+    const data = {
       clientName,
+      phrase,
       img1: img1 || '',
       img2: img2 || '',
-      phrase: phrase || '',
       color1: color1 || '',
       color2: color2 || '',
       color3: color3 || ''
-    }));
+    };
 
-    // El formulario Mobile espera claves específicas para autocompletarse
-    // Cambiamos clientName a companyName ya que se confirmó que funciona para el nombre,
-    // manteniendo text, img1, img2, color1, color2, color3 que funcionan para el resto.
-    const mobilePayload = btoa(encodeURIComponent(JSON.stringify({
-      companyName: clientName || '',
-      text: phrase || '',
+    // Codificación consistente en Base64
+    const desktopPayload = btoa(JSON.stringify(data));
+    
+    const mobileData = {
+      companyName: clientName,
+      text: phrase,
       img1: img1 || '',
       img2: img2 || '',
       color1: color1 || '',
       color2: color2 || '',
       color3: color3 || ''
-    })));
+    };
+    const mobilePayload = btoa(JSON.stringify(mobileData));
 
     return { desktopPayload, mobilePayload };
   };
