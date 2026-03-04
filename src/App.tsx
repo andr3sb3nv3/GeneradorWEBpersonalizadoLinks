@@ -60,15 +60,11 @@ export default function App() {
             // Detección por tamaño de pantalla (ancho o alto pequeño indica móvil)
             const isSmallScreen = window.innerWidth < 1024 || window.innerHeight < 768;
             
-            console.log('Device detection:', { isMobileUA, hasTouch, isSmallScreen });
-
             // Si cumple cualquiera de los criterios, lo tratamos como Mobile/Tablet
             if (isMobileUA || (hasTouch && isSmallScreen)) {
-              console.log('Redirecting to mobile:', `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(data.mobilePayload)}`);
-              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${encodeURIComponent(data.mobilePayload)}`;
+              window.location.href = `https://mobile-propuesta-con-from-completo.vercel.app/#/p/${data.mobilePayload}`;
             } else {
-              console.log('Redirecting to desktop:', `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(data.desktopPayload)}`);
-              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${encodeURIComponent(data.desktopPayload)}`;
+              window.location.href = `https://propuesta-comercial-desktop.vercel.app/?data=${data.desktopPayload}`;
             }
           })
           .catch(err => {
@@ -85,18 +81,13 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Función auxiliar para codificar en Base64 de forma segura con caracteres Unicode
-  const safeBtoa = (str: string) => {
-    try {
-      return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
-    } catch (e) {
-      console.error("Error en safeBtoa:", e);
-      return "";
-    }
-  };
-
   const createLinkPayloads = (clientName: string, phrase: string, img1: string, img2: string, color1: string, color2: string, color3: string) => {
-    const data = {
+    // Función para codificar Base64 manejando caracteres Unicode (acentos, etc)
+    const encodeData = (obj: any) => {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    };
+
+    const desktopPayload = encodeData({
       clientName,
       phrase,
       img1: img1 || '',
@@ -104,12 +95,9 @@ export default function App() {
       color1: color1 || '',
       color2: color2 || '',
       color3: color3 || ''
-    };
-
-    // Codificación consistente en Base64 usando safeBtoa
-    const desktopPayload = safeBtoa(JSON.stringify(data));
+    });
     
-    const mobileData = {
+    const mobilePayload = encodeData({
       companyName: clientName,
       text: phrase,
       img1: img1 || '',
@@ -117,8 +105,7 @@ export default function App() {
       color1: color1 || '',
       color2: color2 || '',
       color3: color3 || ''
-    };
-    const mobilePayload = safeBtoa(JSON.stringify(mobileData));
+    });
 
     return { desktopPayload, mobilePayload };
   };
